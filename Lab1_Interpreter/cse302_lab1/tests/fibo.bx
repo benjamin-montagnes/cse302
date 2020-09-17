@@ -1,0 +1,1 @@
+x = 0;y = 1;print(x);z = x;x = y;y = y + z;print(x);z = x;x = y;y = y + z;print(x);z = x;x = y;y = y + z;print(x);
