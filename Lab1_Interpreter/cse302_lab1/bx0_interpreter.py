@@ -7,7 +7,7 @@ Usage: ./bx0_interpreter.py file1.bx file2.bx ...
 """
 
 from scanner import load_source, lexer
-from parser1 import parser
+from bx0_parser import parser
 
 import sys
 
