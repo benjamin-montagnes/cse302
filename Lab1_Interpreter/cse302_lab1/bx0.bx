@@ -1,0 +1,1 @@
+x=10;print(x);y = 2 * x;print(x + y);z = y / 2;print(z + z * y);w = z - x - y;print(w);print(- w - w);print(- w - - w);print(- - w);print(w * - w);print(x + y * 2);print((x + y) * 2);

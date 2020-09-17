@@ -15,9 +15,14 @@ from scanner import tokens, set_source, load_source, lexer, print_error_message
 tokens += ('UMINUS',)
 
 precedence = (
+    ('left', 'BAR'),
+    ('left', 'CARET'),
+    ('left', 'AMP'),
+    ('left', 'LTLT', 'GTGT'),
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'STAR', 'SLASH'),
+    ('left', 'STAR', 'SLASH', 'PERCENT'),
     ('left', 'UMINUS'),
+    ('left', 'TILDE'),
 )
 
 # ------------------------------------------------------------------------------
@@ -29,10 +34,10 @@ class Node:
         self.kids = kids
 
     def __repr__(self):
-        return '({} {}{}{})'\
-               .format(self.opcode, repr(self.value),
-                       '' if len(self.kids) == 0 else ' ',
-                       ' '.join(repr(kid) for kid in self.kids))
+        return '({} {}{}{})' \
+            .format(self.opcode, repr(self.value),
+                    '' if len(self.kids) == 0 else ' ',
+                    ' '.join(repr(kid) for kid in self.kids))
 
     def __eq__(self, other):
         return \
@@ -60,12 +65,19 @@ def p_expr_binop(p):
     '''expr : expr PLUS  expr
             | expr MINUS expr
             | expr STAR  expr
-            | expr SLASH expr'''
+            | expr SLASH expr
+            | expr PERCENT expr
+            | expr AMP expr
+            | expr BAR expr
+            | expr CARET expr
+            | expr LTLT expr
+            | expr GTGT expr'''
     p[0] = Node('binop', p[2], p[1], p[3])
 
 def p_expr_unop(p):
     '''expr : MINUS expr %prec UMINUS
-            | UMINUS expr'''
+            | UMINUS expr
+            | TILDE expr'''
     p[0] = Node('unop', p[1], p[2])
 
 def p_expr_parens(p):
@@ -78,7 +90,27 @@ def p_error(p):
     # Note: SyntaxError is a built in exception in Python
     raise SyntaxError(p.type)
 
-parser = yacc.yacc(start='expr')
+def p_program(p):
+    '''program :
+               | stmt program'''
+    n = Node('statements', None)
+    if len(p) > 1: n.kids = (p[1], p[2])
+    p[0] = n
+
+def p_stmt(p):
+    '''stmt : assign
+            | print'''
+    p[0] = p[1]
+
+def p_assign(p):
+    '''assign : IDENT EQ expr SEMICOLON'''
+    p[0] = Node('assign', '=', p[1], p[3])
+
+def p_print(p):
+    '''print : PRINT LPAREN expr RPAREN SEMICOLON'''
+    p[0] = Node('print', p[3])
+
+parser = yacc.yacc(start='program')
 
 # ------------------------------------------------------------------------------
 
@@ -116,4 +148,4 @@ if __name__ == '__main__':
             source = 'x + + x'
             self.assertRaisesRegex(SyntaxError, 'PLUS', parse, source)
     unittest.main()
-
+    

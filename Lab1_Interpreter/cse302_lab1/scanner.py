@@ -17,9 +17,11 @@ tokens = (
     # punctuation
     'LPAREN', 'RPAREN', 'SEMICOLON', 'EQ',
     # arithmetic operators
-    'PLUS', 'MINUS', 'STAR', 'SLASH',
+    'PLUS', 'MINUS', 'STAR', 'SLASH', 'PERCENT',
     # primitives
     'IDENT', 'NUMBER',
+    # bitwise operator
+    'GTGT', 'LTLT', 'TILDE', 'CARET', 'BAR', 'AMP',
 ) + tuple(reserved.values())
 ### TODO: add other tokens
 
@@ -49,13 +51,13 @@ def print_error_message(tok, msg):
         print(f'At line {lineno}, character {charpos}:', file=errfile)
     print(msg, file=errfile)
     print('>', tok.lexer.lexdata[bolpos:eolpos], file=errfile)
-    print(' '*(charpos+1), '^'*len(tokstr), sep='', file=errfile)
+    print(' ' * (charpos + 1), '^' * len(tokstr), sep='', file=errfile)
 
 # ------------------------------------------------------------------------------
 
 # whitespace, newlines, and comments
 
-t_ignore = ' \t\f\v\r'          # all characters that are simply ignored
+t_ignore = ' \t\f\v\r'  # all characters that are simply ignored
 
 def t_newline(t):
     r'\n'
@@ -66,7 +68,7 @@ def t_comment(t):
     r'//.*\n?'
     t.lexer.lineno += 1
     # no token returned
-
+    
 # operators and punctuation
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
@@ -76,6 +78,14 @@ t_STAR = r'\*'
 t_SLASH = r'/'
 t_SEMICOLON = r';'
 # TODO: add any other operator/punctuation
+t_GTGT = r'\>>'
+t_LTLT = r'\<<'
+t_TILDE = r'\~'
+t_CARET = r'\^'
+t_BAR = r'\|'
+t_AMP = r'\&'
+t_PERCENT = r'\%'
+t_EQ = r'\='
 
 # primitives
 
@@ -89,13 +99,13 @@ def t_NUMBER(t):
     r'0|[1-9][0-9]*'
     # t.type == 'NUMBER'
     t.value = int(t.value)
-    if not (0 <= t.value < (1<<63)):
+    if not (0 <= t.value < (1 << 63)):
         print_error_message(t, f'Error: numerical literal {t.value} not in range(0, 1<<63)')
         raise SyntaxError('bad number')
     return t
 
 # TODO: add any other lexer function
-
+    
 # error messages
 def t_error(t):
     print_error_message(t, f'Warning: skipping illegal character {t.value[0]}')
@@ -169,3 +179,4 @@ if __name__ == '__main__':
             self.assertEqual(all_tokens('  `  ? !'), [])
         # TODO: add any other unit tests
     unittest.main()
+    
