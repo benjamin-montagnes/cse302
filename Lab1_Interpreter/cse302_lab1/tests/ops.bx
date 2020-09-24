@@ -1,0 +1,27 @@
+x = 10;
+print(x);
+y = 2 * x;
+print(x + y);
+z = y / 2;
+x = y * z;
+print(z + z * y);
+w = z - x - y;
+y = w / x;
+y = y % -500;
+print(x + y * 2);
+print((x + y) * 2);
+print((x + y) & 180);
+print((x + y) | 180);
+print((x + y) ^ 180);
+print(~x + y);
+print((x << 2) >> 3);
+max_pos = (1 << 63) - 1;
+print(max_pos);
+print(max_pos + 1); // max_neg
+x = 10;
+y = x + 100; // 110
+x = 20;
+z = x - 100; // -80
+print(x);
+print(y);
+print(z);
