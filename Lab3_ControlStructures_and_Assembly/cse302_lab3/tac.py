@@ -220,7 +220,7 @@ binops = {
     'add' : (lambda u, v: twoc(untwoc(u) + untwoc(v))),
     'sub' : (lambda u, v: twoc(untwoc(u) - untwoc(v))),
     'mul' : (lambda u, v: twoc(untwoc(u) * untwoc(v))),
-    'div' : (lambda u, v: twoc(untwoc(u) // untwoc(v))),
+    'div' : (lambda u, v: twoc(int(untwoc(u) / untwoc(v)))),
     'mod' : (lambda u, v: twoc(untwoc(u) % untwoc(v))),
     'and' : (lambda u, v: twoc(untwoc(u) & untwoc(v))),
     'or'  : (lambda u, v: twoc(untwoc(u) | untwoc(v))),
