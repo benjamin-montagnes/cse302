@@ -1,3 +1,4 @@
+.L0:
   %2 = const 0;
   %3 = copy %2;
   %4 = const 1;

@@ -16,19 +16,19 @@ def main():
             
         tac_to_ass = TTA()
         tac_to_ass.tac_prgm_to_x64(prgrm)
-        
 
         fname = filename.split('.')[0] + '.s'
         f = open(fname,"w+")
-        f.write("\t.globl main\n\t.text\nmain:\n\tpushq %rbp\n\tsubq $56, %rsp\n")
+        f.write("\t.globl main\n\t.text\nmain:\n\tpushq %rbp\n\tmovq %rsp, %rbp\n\tsubq $56, %rsp\n.L0:\n")
         for instr in tac_to_ass.instrs: 
-            print(instr)
+            # print(instr)
             if instr.arg2 and instr.arg1: f.write("\t{} {}, {}\n".format(instr.opcode,instr.arg1, instr.arg2))
             elif instr.arg1 : f.write("\t{} {}\n".format(instr.opcode,instr.arg1))
-            else: f.write("{}:\n".format(instr.opcode))
+            elif instr.opcode[1] == 'L': f.write("{}:\n".format(instr.opcode))
+            else: f.write("\t{}\n".format(instr.opcode))
         
         #Instructions to restore RSP,RBP and set return code to 0 and exit: 
-        f.write("\tmovq %rbp, %rsp\n\tpopq %rbp\n\tmovq $0, %rax\n\tretq")
+        f.write("\tmovq %rbp, %rsp\n\tpopq %rbp\n\tmovq $0, %rax\n\tretq\n")
         f.close()
 
 class Instr_x64:
@@ -65,6 +65,10 @@ class TTA:
         self.unop_map = {'neg': 'negq', 
                          'not': 'notq'
                          }
+        self.shift_map = {'shl': 'salq',
+                          'shr': 'sarq'
+                          }
+        self.divmod = ['div','mod']
         self.jcc = ['jz','jnz','jl','jle']
         
     def emit(self, instr):
@@ -76,56 +80,59 @@ class TTA:
         if temp not in self.stack_slot_map: self.stack_slot_map.append(temp)
         return "-{}(%rbp)".format(str((self.stack_slot_map.index(temp) + 1) * 8)) # nth temporary will be located at RBP - 8n
     
-    def tac_expr_to_x64(self, instr):
+    def tac_instr_to_x64(self, instr):
         if instr.opcode == 'const':
             register = self.get_stack_slot(instr.dest)
             self.emit(Instr_x64("movq","${}".format(str(instr.arg1)), register))
         elif instr.opcode == 'copy':
             register = self.get_stack_slot(instr.dest)
             register_1 = self.get_stack_slot(instr.arg1)
-            self.emit(Instr_x64("movq", register_1, "%rax"))
-            self.emit(Instr_x64("movq", "%rax", "%rcx"))
-            self.emit(Instr_x64("movq", "%rcx", register))
+            self.emit(Instr_x64("movq", register_1, "%r11"))
+            self.emit(Instr_x64("movq", "%r11", register))
         
         elif instr.opcode in self.binop_map:
             register = self.get_stack_slot(instr.dest)
-            register_2 = self.get_stack_slot(instr.arg2)
-            self.emit(Instr_x64("movq", register_2, "%rcx"))
             register_1 = self.get_stack_slot(instr.arg1)
-            self.emit(Instr_x64("movq", register_1, "%rax"))
-            self.emit(Instr_x64(self.binop_map[instr.opcode], "%rax", "%rcx"))
-            self.emit(Instr_x64("movq", "%rcx", register))
+            register_2 = self.get_stack_slot(instr.arg2)
+            self.emit(Instr_x64("movq", register_1, "%r11"))
+            self.emit(Instr_x64(self.binop_map[instr.opcode], register_2, "%r11"))
+            self.emit(Instr_x64("movq", "%r11", register))
 
         elif instr.opcode in self.unop_map:
             register = self.get_stack_slot(instr.dest)
-            register_1 = self.get_stack_slot(instr.arg2)
-            self.emit(Instr_x64("movq", register_1, "%rax"))
-            self.emit(Instr_x64(self.unop_map[instr.opcode ],"%rax", None))
-            self.emit(Instr_x64("movq", "%rcx", register))
-            
-        elif instr.opcode == 'jmp':
-            self.emit(Instr_x64('jmp', instr.arg1, None))
+            register_1 = self.get_stack_slot(instr.arg1)
+            self.emit(Instr_x64("movq", register_1, "%r11"))
+            self.emit(Instr_x64(self.unop_map[instr.opcode ],"%r11", None))
+            self.emit(Instr_x64("movq", "%r11", register))
             
         elif instr.opcode == 'label':
             self.emit(Instr_x64(instr.arg1, None, None))
             
+        elif instr.opcode == 'jmp':
+            self.emit(Instr_x64('jmp', instr.arg1, None))
+            
         elif instr.opcode in self.jcc:
-            self.emit(Instr_x64('cmpq', '$0', instr.arg1))
+            self.emit(Instr_x64('cmpq', '$0', self.get_stack_slot(instr.arg1)))
             self.emit(Instr_x64(instr.opcode, instr.arg2, None))
-            
-        # elif instr.opcode == 'shr' || instr.opcode == 'shl':
-        # elif instr.opcode == 'nop':
-            
-        elif instr.opcode == 'div' or instr.opcode == 'mod':
+        
+        elif instr.opcode in self.shift_map:
             register = self.get_stack_slot(instr.dest)
-            register_2 = self.get_stack_slot(instr.arg2)
-            self.emit(Instr_x64("movq", register_2, "%rcx"))
             register_1 = self.get_stack_slot(instr.arg1)
-            self.emit(Instr_x64("movq", register_1, "%rax"))
-            self.emit(Instr_x64('idivq', ))
+            register_2 = self.get_stack_slot(instr.arg2)
+            self.emit(Instr_x64("movq", register_1, "%r11"))
+            self.emit(Instr_x64("movq", register_2, "%rcx"))
+            self.emit(Instr_x64(self.shift_map[instr.opcode], "%cl", "%r11"))
+            self.emit(Instr_x64("movq", "%r11", register))
+            
+        elif instr.opcode in self.divmod :
+            register = self.get_stack_slot(instr.dest)
+            register_1 = self.get_stack_slot(instr.arg1)
+            register_2 = self.get_stack_slot(instr.arg2)
+            self.emit(Instr_x64('movq', register_1, '%rax'))#dividend into %rax
+            self.emit(Instr_x64('cqto', None, None))# sign extend rax to rdx:rax
+            self.emit(Instr_x64('idivq', register_2, None))
             if instr.opcode == 'div': self.emit(Instr_x64("movq", "%rax", register))
-            else: self.emit(Instr_x64("movq", "%rdx", register))
-                
+            else: self.emit(Instr_x64("movq", "%rdx", register)) #modulus
             
         elif instr.opcode == 'print':
             self.emit(Instr_x64('pushq', '%rdi', None))
@@ -133,11 +140,8 @@ class TTA:
             self.emit(Instr_x64('callq', 'bx_print_int', None))
             self.emit(Instr_x64('popq', '%rdi', None))
             
-            
-        
     def tac_prgm_to_x64(self, prgm):
-        # self.emit(Instr_x64('subq',"${}".format(len(self.stack_slot_map)*8), "$rsp"))
-        for instr in prgm: self.tac_expr_to_x64(instr)
+        for instr in prgm: self.tac_instr_to_x64(instr)
         
 
 

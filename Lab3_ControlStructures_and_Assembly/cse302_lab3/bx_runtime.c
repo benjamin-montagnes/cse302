@@ -3,5 +3,10 @@
 
 void bx_print_int(int64_t arg)
 {
-  printf("%ld\n", arg);
+  printf("%lld\n", arg);
 }
+
+// int main() {
+//     printf("hello bitches \n");
+//     return 0 ;
+// }

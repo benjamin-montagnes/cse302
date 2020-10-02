@@ -3,10 +3,13 @@
 main:
 	pushq %rbp
 	subq $56, %rsp
+	
 	movq $0, -8(%rbp)
-	movq -8(%rbp), %rax
-	movq %rax, %rcx
+	
+	movq -8(%rbp), %r11
+	movq %r11, %rcx
 	movq %rcx, -16(%rbp)
+	
 	movq $1, -24(%rbp)
 	movq -24(%rbp), %rax
 	movq %rax, %rcx
@@ -21,42 +24,46 @@ main:
 	movq -48(%rbp), %rax
 	subq %rax, %rcx
 	movq %rcx, -64(%rbp)
-	cmpq $0, %13
+	cmpq $0, -64(%rbp)
 	jl .L14
 	movq $0, -64(%rbp)
 	jmp .L15
 .L14:
 	movq $1, -64(%rbp)
 .L15:
-	cmpq $0, %13
+	cmpq $0, -64(%rbp)
 	jz .L11
 	movq $2, -72(%rbp)
-	movq $0, -80(%rbp)
-	movq -80(%rbp), %rcx
-	movq -96(%rbp), %rax
-	subq %rax, %rcx
-	movq %rcx, -88(%rbp)
-	cmpq $0, %19
-	jz .L20
+	xor %rdx, %rdx
+	movq -48(%rbp), %rax
+	idivq -72(%rbp)
+	movq %rdx, -80(%rbp)
 	movq $0, -88(%rbp)
+	movq -88(%rbp), %rcx
+	movq -80(%rbp), %rax
+	subq %rax, %rcx
+	movq %rcx, -96(%rbp)
+	cmpq $0, -96(%rbp)
+	jz .L20
+	movq $0, -96(%rbp)
 	jmp .L21
 .L20:
-	movq $1, -88(%rbp)
+	movq $1, -96(%rbp)
 .L21:
-	cmpq $0, %19
+	cmpq $0, -96(%rbp)
 	jnz .L22
 	movq -112(%rbp), %rax
 	negq %rax
 	movq %rcx, -104(%rbp)
 	pushq %rdi
 	movq -104(%rbp), %rdi
-	callq bx_print_int
+	callq _bx_print_int
 	popq %rdi
 	jmp .L23
 .L22:
 	pushq %rdi
 	movq -16(%rbp), %rdi
-	callq bx_print_int
+	callq _bx_print_int
 	popq %rdi
 .L23:
 	movq -32(%rbp), %rcx
