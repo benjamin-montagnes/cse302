@@ -115,27 +115,17 @@ class TTA:
             
         # elif instr.opcode == 'shr' || instr.opcode == 'shl':
         # elif instr.opcode == 'nop':
-        elif instr.opcode == 'div' or instr.opcode == 'mod':
             
+        elif instr.opcode == 'div' or instr.opcode == 'mod':
             register = self.get_stack_slot(instr.dest)
             register_2 = self.get_stack_slot(instr.arg2)
             self.emit(Instr_x64("movq", register_2, "%rcx"))
-            
             register_1 = self.get_stack_slot(instr.arg1)
             self.emit(Instr_x64("movq", register_1, "%rax"))
             self.emit(Instr_x64('idivq', ))
-                
-            
             if instr.opcode == 'div': self.emit(Instr_x64("movq", "%rax", register))
             else: self.emit(Instr_x64("movq", "%rdx", register))
                 
-                
-            
-            
-            
-            
-        elif instr.opcode == 'mod':
-            None
             
         elif instr.opcode == 'print':
             self.emit(Instr_x64('pushq', '%rdi', None))
