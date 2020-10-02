@@ -82,24 +82,18 @@ class TTA:
             self.emit(Instr_x64("movq","${}".format(str(instr.arg1)), register))
         elif instr.opcode == 'copy':
             register = self.get_stack_slot(instr.dest)
-            if instr.arg1[1]=='$': #immediate
-                self.emit(Instr_x64("movq", instr.arg1, "%rcx"))
-            else:
-                register_1 = self.get_stack_slot(instr.arg1)
-                self.emit(Instr_x64("movq", register_1, "%rax"))
-                self.emit(Instr_x64("movq", "%rax", "%rcx"))
+            register_1 = self.get_stack_slot(instr.arg1)
+            self.emit(Instr_x64("movq", register_1, "%rax"))
+            self.emit(Instr_x64("movq", "%rax", "%rcx"))
             self.emit(Instr_x64("movq", "%rcx", register))
         
         elif instr.opcode in self.binop_map:
             register = self.get_stack_slot(instr.dest)
             register_2 = self.get_stack_slot(instr.arg2)
             self.emit(Instr_x64("movq", register_2, "%rcx"))
-            if instr.arg1[1]=='$': #immediate
-                self.emit(Instr_x64(self.binop_map[instr.opcode], instr.arg1, "%rcx"))
-            else:
-                register_1 = self.get_stack_slot(instr.arg1)
-                self.emit(Instr_x64("movq", register_1, "%rax"))
-                self.emit(Instr_x64(self.binop_map[instr.opcode], "%rax", "%rcx"))
+            register_1 = self.get_stack_slot(instr.arg1)
+            self.emit(Instr_x64("movq", register_1, "%rax"))
+            self.emit(Instr_x64(self.binop_map[instr.opcode], "%rax", "%rcx"))
             self.emit(Instr_x64("movq", "%rcx", register))
 
         elif instr.opcode in self.unop_map:
@@ -115,11 +109,33 @@ class TTA:
         elif instr.opcode == 'label':
             self.emit(Instr_x64(instr.arg1, None, None))
             
-        # elif instr.opcode in self.jcc:
+        elif instr.opcode in self.jcc:
+            self.emit(Instr_x64('cmpq', '$0', instr.arg1))
+            self.emit(Instr_x64(instr.opcode, instr.arg2, None))
+            
         # elif instr.opcode == 'shr' || instr.opcode == 'shl':
         # elif instr.opcode == 'nop':
-        # elif instr.opcode == 'div':
-        # elif instr.opcode == 'mod':
+        elif instr.opcode == 'div' or instr.opcode == 'mod':
+            
+            register = self.get_stack_slot(instr.dest)
+            register_2 = self.get_stack_slot(instr.arg2)
+            self.emit(Instr_x64("movq", register_2, "%rcx"))
+            
+            register_1 = self.get_stack_slot(instr.arg1)
+            self.emit(Instr_x64("movq", register_1, "%rax"))
+            self.emit(Instr_x64('idivq', ))
+                
+            
+            if instr.opcode == 'div': self.emit(Instr_x64("movq", "%rax", register))
+            else: self.emit(Instr_x64("movq", "%rdx", register))
+                
+                
+            
+            
+            
+            
+        elif instr.opcode == 'mod':
+            None
             
         elif instr.opcode == 'print':
             self.emit(Instr_x64('pushq', '%rdi', None))
