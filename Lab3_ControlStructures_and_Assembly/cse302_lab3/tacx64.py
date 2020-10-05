@@ -19,7 +19,7 @@ def main():
 
         fname = filename.split('.')[0] + '.s'
         f = open(fname,"w+")
-        f.write("\t.globl main\n\t.text\nmain:\n\tpushq %rbp\n\tmovq %rsp, %rbp\n\tsubq $56, %rsp\n.L0:\n")
+        f.write("\t.globl main\n\t.text\nmain:\n\tpushq %rbp\n\tmovq %rsp, %rbp\n\tsubq $56, %rsp\n")
         for instr in tac_to_ass.instrs: 
             # print(instr)
             if instr.arg2 and instr.arg1: f.write("\t{} {}, {}\n".format(instr.opcode,instr.arg1, instr.arg2))
