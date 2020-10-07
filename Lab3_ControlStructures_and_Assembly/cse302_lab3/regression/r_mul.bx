@@ -1,0 +1,8 @@
+// multiplication
+
+x = 42;
+y = 84;
+print(y * x);
+print(x * y);
+z = x * y;
+print(z);

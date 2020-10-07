@@ -1,0 +1,14 @@
+// bit operations
+
+x = 10843;
+y = 13394;
+print(x | y);
+print(x & y);
+print(x ^ y);
+print(~ x);
+print(~ y);
+print(x + ~ x);
+print(x >> 3);
+print(x << 3);
+print(-x >> 3);
+print(-x << 3);

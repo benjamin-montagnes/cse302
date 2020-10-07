@@ -1,0 +1,12 @@
+// max and min int stuff
+
+M = 9223372036854775807;
+m = -M - 1;
+
+print(M + 1);
+print(m);
+
+print(m - 1);
+print(M);
+
+print(M + m);

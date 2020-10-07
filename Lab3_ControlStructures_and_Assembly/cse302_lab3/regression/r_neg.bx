@@ -1,0 +1,8 @@
+// negation
+
+x = 42;
+print(-x);
+y = -x;
+print(y);
+print(--x);
+print(---x);

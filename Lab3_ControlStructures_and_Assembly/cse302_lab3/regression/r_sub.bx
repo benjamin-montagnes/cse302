@@ -1,0 +1,7 @@
+// subtraction
+
+x = 42;
+y = 84;
+print(y - x);
+z = x - y;
+print(z);

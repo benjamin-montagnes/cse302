@@ -1,0 +1,7 @@
+// addition
+
+x = 42;
+y = 84;
+print(x + y);
+z = x + y;
+print(z);
