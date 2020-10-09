@@ -94,14 +94,6 @@ def build_stmt_ast(pt_stmt):
         # print(pt_stmt)
         return ast.Block(*[build_stmt_ast(block_stmt) for block_stmt in pt_stmt.kids[0]])
     elif pt_stmt.opcode == 'ifelse':
-         # print('block: ', stmt.kids[1])
-         # block_stmts = []
-         # for block_stmt in pt_stmt.kids[1]:
-         #     print('block stmt opcode ', block_stmt.opcode)
-         #     print('build block stmt:', build_stmt_ast(block_stmt))
-         #     block_stmts.append(build_stmt_ast(block_stmt))
-         #     #return ast.I
-         
          if pt_stmt.kids[2]:
              # print('pt_stmt kidsssssssssssssssssssssssssssssssssssssssssssssssss 2', pt_stmt.kids[2])
              return ast.IfElse(build_expr_ast(pt_stmt.kids[0]), 
