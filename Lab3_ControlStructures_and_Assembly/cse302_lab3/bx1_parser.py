@@ -14,7 +14,9 @@ reserved = {
     'else': 'ELSE',
     'while': 'WHILE',
     'break': 'BREAK',
-    'continue': 'CONTINUE'
+    'continue': 'CONTINUE',
+    'true': 'TRUE',
+    'false': 'FALSE'
 }
 
 # All tokens
@@ -28,9 +30,9 @@ tokens = (
     # primitives
     'IDENT', 'NUMBER',
     # new for booleans
-    'LBRACKET', 'RBRACKET', 'true', 'false',
+    'LBRACKET', 'RBRACKET',
     # new binary ops
-    'BOOLOR', 'BOOLAND',
+    'BOOLOR', 'BOOLAND', 'BDISEQ', 'BEQ', 'BL', 'BLEQ', 'BS', 'BSEQ', 
     #new unary ops
     'NEG'
 ) + tuple(reserved.values())
@@ -62,6 +64,12 @@ def create_lexer():
     t_RBRACKET = r'\}'
     t_BOOLOR = r'\|\|'
     t_BOOLAND = r'&&'
+    t_BDISEQ = r'!='
+    t_BEQ = r'=='
+    t_BL = r'<'
+    t_BLEQ = r'<='
+    t_BS = r'>'
+    t_BSEQ = r'>='
     t_NEG = r'\!'
 
     # primitives
@@ -94,6 +102,8 @@ precedence = (
     ('left', 'BAR'),
     ('left', 'CARET'),
     ('left', 'AMP'),
+    ('left', 'BDISEQ', 'BEQ'),
+    ('left', 'BL', 'BLEQ', 'BS', 'BSEQ'),
     ('left', 'LTLT', 'GTGT'),
     ('left', 'PLUS', 'MINUS'),
     ('left', 'STAR', 'SLASH'),
@@ -141,7 +151,13 @@ def create_parser():
                 | expr LTLT expr
                 | expr GTGT expr
                 | expr BOOLOR expr
-                | expr BOOLAND expr'''
+                | expr BOOLAND expr
+                | expr BDISEQ expr
+                | expr BEQ expr
+                | expr BL expr
+                | expr BLEQ expr
+                | expr BS expr
+                | expr BSEQ expr'''
         p[0] = Node('binop', p[2], p[1], p[3])
 
     def p_expr_unop(p):
@@ -152,20 +168,21 @@ def create_parser():
         p[0] = Node('unop', p[1], p[2])
     
     def p_expr_true(p):
-        '''expr : true'''
-        p[0] = Node('true',p[1])
+        '''expr : TRUE'''
+        p[0] = Node('bool',p[1])
         
     def p_expr_false(p):
-        '''expr : false'''
-        p[0] = Node('false',p[1])
+        '''expr : FALSE'''
+        p[0] = Node('bool',p[1])
 
     def p_expr_parens(p):
         '''expr : LPAREN expr RPAREN'''
         p[0] = p[2]
-        
+    
     def p_block(p):
         '''block : LBRACKET stmts RBRACKET'''
-        p[0] = p[2]
+        # p[0] = p[2]
+        p[0] = Node('block', None, p[2])
         
     def p_stmt_assign(p):
         '''stmt : IDENT EQ expr SEMICOLON'''
@@ -177,18 +194,19 @@ def create_parser():
 
     def p_stmt_ifelse(p):
         '''stmt : IF LPAREN expr RPAREN block ifrest'''
-        print('yahooo')
-        p[0] = Node('if', None, p[3], p[5],p[6])
+        # print('yahooo')
+        p[0] = Node('ifelse', None, p[3], p[5],p[6])
         
-    def p_ifrest(p):
-        '''ifrest : ELSE stmt
+    def p_ifrest(p): # problem here as stmt should be ifelse
+        '''ifrest : ELSE stmt 
                 | ELSE block
                 | '''
-        p[0] = p[2] if len(p)>1 else None
+        # p[0] = p[2] if len(p)>1 else None
+        p[0] = Node('ifrest', None, p[2]) if len(p)>1 else None
 
     def p_stmt_while(p):
         '''stmt : WHILE LPAREN expr RPAREN block'''
-        p[0] = Node('while', None, p[3], p[5], p[6])
+        p[0] = Node('while', None, p[3], p[5])
 
     def p_stmt_jump(p):
         '''stmt : BREAK SEMICOLON
@@ -199,6 +217,11 @@ def create_parser():
         '''stmts : stmt stmts
                 |  '''
         p[0]= [p[1]] + p[2] if len(p)>1 else []
+        # if len(p)>1:
+        #     p[0]=p[1]
+        #     p[0].append(p[2])
+        # else:
+        #     p[0]=[]
         
     def p_program(p):
         '''program : stmts'''
@@ -206,7 +229,7 @@ def create_parser():
         
 
     def p_error(p):
-        print("typpeee:",p.type)
+        # print("typpeee:",p.type)
         if not p: return
         p.lexer.lexpos -= len(p.value)
         print_at(p, f'Error: syntax error while processing {p.type}')

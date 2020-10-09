@@ -19,7 +19,7 @@ def main():
         load_source(filename)
         
         statements = parser.parse(lexer=lexer)
-        # print(statements, sep='\n')
+        print(statements, sep='\n')
         
         tmm = TMM()
         # tmm.tmm_expr(Node('binop', '+', Node('var', 'x'), Node('num', 42)), '%2')
@@ -32,7 +32,9 @@ def main():
         tmm.copy_prop()
         tmm.dead_copy()
         
-        for item in tmm.instrs: f.write("%s\n" % item)
+        # print(tmm.instrs)
+        for item in tmm.instrs: 
+            f.write("%s\n" % item)
         f.close()
         
         # print(*tmm.instrs, sep= '\n')
