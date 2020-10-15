@@ -1,0 +1,6 @@
+// repeated declaration of the same gvar
+
+proc main() { }
+
+var x = 42 : int;
+var x = -42 : int;

@@ -1,0 +1,5 @@
+// global variable initialized with illegal values
+
+proc main() { }
+
+var x = !false : bool;

@@ -1,0 +1,9 @@
+// missing return on some code paths
+
+proc main() { }
+
+proc get_42() : int {
+  while (true) {
+    return 42;
+  }
+}

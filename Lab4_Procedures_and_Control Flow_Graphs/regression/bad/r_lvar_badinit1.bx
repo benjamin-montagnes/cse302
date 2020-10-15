@@ -1,0 +1,5 @@
+// initializer of wrong type
+
+proc main() {
+  var x = !true : int;
+}

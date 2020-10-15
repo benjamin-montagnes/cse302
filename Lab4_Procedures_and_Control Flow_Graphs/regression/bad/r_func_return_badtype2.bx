@@ -1,0 +1,7 @@
+// bad return type
+
+proc main() { }
+
+proc get() : int {
+  return main();
+}
