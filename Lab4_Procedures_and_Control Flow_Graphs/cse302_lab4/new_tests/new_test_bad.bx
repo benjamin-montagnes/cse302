@@ -1,0 +1,5 @@
+// calling a function that does not exist
+
+proc main() { 
+    fib(10);
+}

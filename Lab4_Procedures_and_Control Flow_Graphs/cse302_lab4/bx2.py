@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-BX0 scanner and parser
+BX1 scanner and parser
 """
 
 from ply import lex, yacc
@@ -10,31 +10,29 @@ from ply_util import *
 # Reserved keywords
 reserved = {
     'print': 'PRINT',
+    'while': 'WHILE',
+    'true': 'TRUE',
+    'false': 'FALSE',
     'if': 'IF',
     'else': 'ELSE',
-    'while': 'WHILE',
     'break': 'BREAK',
     'continue': 'CONTINUE',
-    'true': 'TRUE',
-    'false': 'FALSE'
 }
 
 # All tokens
 tokens = (
     # punctuation
-    'LPAREN', 'RPAREN', 'SEMICOLON', 'EQ',
+    'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE', 'SEMICOLON', 'EQ',
     # arithmetic operators
     'PLUS', 'MINUS', 'STAR', 'SLASH', 'PERCENT',
     'AMP', 'BAR', 'CARET', 'LTLT', 'GTGT',
     'TILDE', 'UMINUS',
+    # comparison operators
+    'EQEQ', 'BANGEQ', 'LT', 'LTEQ', 'GT', 'GTEQ',
+    # boolean operators
+    'AMPAMP', 'BARBAR', 'BANG',
     # primitives
     'IDENT', 'NUMBER',
-    # new for booleans
-    'LBRACKET', 'RBRACKET',
-    # new binary ops
-    'BOOLOR', 'BOOLAND',
-    #new unary ops
-    'NEG'
 ) + tuple(reserved.values())
 
 def create_lexer():
@@ -47,24 +45,30 @@ def create_lexer():
     # operators and punctuation
     t_LPAREN = r'\('
     t_RPAREN = r'\)'
+    t_LBRACE = r'\{'
+    t_RBRACE = r'\}'
     t_TILDE = r'~'
     t_PLUS = r'\+'
     t_MINUS = r'-'
     t_STAR = r'\*'
     t_SLASH = r'/'
     t_PERCENT = r'%'
+    t_AMPAMP = r'&&'
+    t_BARBAR = r'\|\|'
     t_AMP = r'&'
     t_BAR = r'\|'
     t_CARET = r'\^'
+    t_EQEQ = r'=='
+    t_BANGEQ = r'!='
+    t_LT = r'<'
+    t_LTEQ = r'<='
+    t_GT = r'>'
+    t_GTEQ = r'>='
+    t_BANG = r'!'
     t_LTLT = r'<<'
     t_GTGT = r'>>'
     t_EQ = r'='
     t_SEMICOLON = r';'
-    t_LBRACKET = r'\{'
-    t_RBRACKET = r'\}'
-    t_BOOLOR = r'\|\|'
-    t_BOOLAND = r'&&'
-    t_NEG = r'\!'
 
     # primitives
 
@@ -91,45 +95,35 @@ def create_lexer():
     return extend_lexer(lex.lex())
 
 precedence = (
-    ('left', 'BOOLOR'),
-    ('left', 'BOOLAND'),
+    ('left', 'BARBAR'),
+    ('left', 'AMPAMP'),
     ('left', 'BAR'),
     ('left', 'CARET'),
     ('left', 'AMP'),
+    ('nonassoc', 'EQEQ', 'BANGEQ'),
+    ('nonassoc', 'LT', 'LTEQ', 'GT', 'GTEQ'),
     ('left', 'LTLT', 'GTGT'),
     ('left', 'PLUS', 'MINUS'),
-    ('left', 'STAR', 'SLASH'),
-    ('left', 'UMINUS'),
+    ('left', 'STAR', 'SLASH', 'PERCENT'),
+    ('left', 'UMINUS', 'BANG'),
     ('left', 'TILDE'),
 )
 
-class Node:
-    def __init__(self, opcode, value, *kids):
-        self.opcode = opcode
-        self.value = value
-        self.kids = kids
-
-    def __repr__(self):
-        return '({} {}{}{})'\
-               .format(self.opcode, repr(self.value),
-                       '' if len(self.kids) == 0 else ' ',
-                       ' '.join(repr(kid) for kid in self.kids))
-
-    def __eq__(self, other):
-        return \
-            isinstance(other, Node) and \
-            self.opcode == other.opcode and \
-            self.value == other.value and \
-            self.kids == other.kids
+import ast
 
 def create_parser():
     def p_expr_ident(p):
         '''expr : IDENT'''
-        p[0] = Node('var', p[1])
+        p[0] = ast.Variable(p[1])
 
     def p_expr_number(p):
         '''expr : NUMBER'''
-        p[0] = Node('num', p[1])
+        p[0] = ast.Number(p[1])
+
+    def p_expr_boolean(p):
+        '''expr : TRUE
+                | FALSE'''
+        p[0] = ast.Boolean(p[1] == 'true')
 
     def p_expr_binop(p):
         '''expr : expr PLUS  expr
@@ -142,80 +136,97 @@ def create_parser():
                 | expr CARET expr
                 | expr LTLT expr
                 | expr GTGT expr
-                | expr BOOLOR expr
-                | expr BOOLAND expr'''
-        p[0] = Node('binop', p[2], p[1], p[3])
+                | expr AMPAMP expr
+                | expr BARBAR expr
+                | expr EQEQ expr
+                | expr BANGEQ expr
+                | expr LT expr
+                | expr LTEQ expr
+                | expr GT expr
+                | expr GTEQ expr'''
+        p[0] = ast.Appl(p[2], p[1], p[3])
 
     def p_expr_unop(p):
         '''expr : MINUS expr %prec UMINUS
                 | UMINUS expr
-                | TILDE expr
-                | NEG expr'''
-        p[0] = Node('unop', p[1], p[2])
-    
-    def p_expr_true(p):
-        '''expr : TRUE'''
-        p[0] = Node('true',p[1])
-        
-    def p_expr_false(p):
-        '''expr : FALSE'''
-        p[0] = Node('false',p[1])
+                | BANG expr
+                | TILDE expr'''
+        op = 'u-' if p[1] == '-' else p[1]
+        p[0] = ast.Appl(op, p[2])
 
     def p_expr_parens(p):
         '''expr : LPAREN expr RPAREN'''
         p[0] = p[2]
-    
-    def p_block(p):
-        '''block : LBRACKET stmts RBRACKET'''
-        p[0] = p[2]
-        
+
     def p_stmt_assign(p):
         '''stmt : IDENT EQ expr SEMICOLON'''
-        p[0] = Node('assign', p[2], Node('var', p[1]), p[3])
+        p[0] = ast.Assign(ast.Variable(p[1]), p[3])
 
     def p_stmt_print(p):
         '''stmt : PRINT LPAREN expr RPAREN SEMICOLON'''
-        p[0] = Node('print', None, p[3])
-
-    def p_stmt_ifelse(p):
-        '''stmt : IF LPAREN expr RPAREN block ifrest'''
-        print('yahooo')
-        p[0] = Node('if', None, p[3], p[5],p[6])
-        
-    def p_ifrest(p):
-        '''ifrest : ELSE stmt
-                | ELSE block
-                | '''
-        p[0] = p[2] if len(p)>1 else None
+        p[0] = ast.Print(p[3])
 
     def p_stmt_while(p):
         '''stmt : WHILE LPAREN expr RPAREN block'''
-        p[0] = Node('while', None, p[3], p[5], p[6])
+        p[0] = ast.While(p[3], p[5])
 
-    def p_stmt_jump(p):
+    def p_stmt_escape(p):
         '''stmt : BREAK SEMICOLON
                 | CONTINUE SEMICOLON'''
-        p[0] = Node(p[1], None)
-                
+        if p[1] == 'break':
+            p[0] = ast.Break()
+        else:
+            p[0] = ast.Continue()
+
+    def p_ifelse(p):
+        '''ifelse : IF LPAREN expr RPAREN block ifcont'''
+        p[0] = ast.IfElse(p[3], p[5], p[6])
+
+    def p_ifcont(p):
+        '''ifcont : ELSE ifelse
+                  | ELSE block
+                  | '''
+        if len(p) == 1:
+            p[0] = ast.Block()
+        elif isinstance(p[2], ast.Block):
+            p[0] = p[2]
+        else:
+            p[0] = ast.Block(p[2])
+
+    def p_block(p):
+        '''block : LBRACE stmts RBRACE'''
+        p[0] = ast.Block(*(p[2]))
+
+    def p_stmt_trivs(p):
+        '''stmt : ifelse
+                | block'''
+        p[0] = p[1]
+
     def p_stmts(p):
-        '''stmts : stmt stmts
-                |  '''
-        p[0]= [p[1]] + p[2] if len(p)>1 else []
-        
+        '''stmts : stmts stmt
+                 | '''
+        if len(p) == 1:
+            p[0] = []
+        else:
+            p[0] = p[1]
+            p[0].append(p[2])
+
     def p_program(p):
         '''program : stmts'''
         p[0] = p[1]
-        
 
     def p_error(p):
-        print("typpeee:",p.type)
         if not p: return
         p.lexer.lexpos -= len(p.value)
         print_at(p, f'Error: syntax error while processing {p.type}')
         # Note: SyntaxError is a built in exception in Python
-        # raise SyntaxError(p.type)
+        raise SyntaxError(p.type)
 
     return yacc.yacc(start='program')
 
-lexer = create_lexer()
-parser = create_parser()
+lexer = None
+parser = None
+
+if '__file__' in globals():
+    lexer = create_lexer()
+    parser = create_parser()
