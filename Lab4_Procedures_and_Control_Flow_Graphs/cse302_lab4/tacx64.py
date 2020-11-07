@@ -34,80 +34,94 @@ class Isel:
             # print('DECLLLL:',str(decl))
             decl.name = decl.name[1:]
             self.stack[decl.name] = {}
-            self.results.append(MISC(f'.globl {decl.name}')) #header and footer
-            self.results.append(MISC(".text"))
-            self.results.append(LABEL(f'{decl.name}'))
-            self.results.append(PUSH("%rbp"))
-            self.results.append(MOV("%rsp", "%rbp"))
-            self.stnum = len(self.results) - 1
+            header=[
+                MISC(f'.globl {decl.name}'),
+                MISC(".text"),
+                LABEL(f'{decl.name}'),
+                PUSH("%rbp"),
+                MOV("%rsp", "%rbp"),
+            ]
+            footer = [
+                MOV("%rbp", "%rsp"),
+                POP("%rbp"),
+                XOR("%rax", "%rax"),
+                RET
+            ]
             reg = ['%rdi','%rsi','%rdx','%rcx','%r8','%r9']
+            self.results = header + self.results
+            self.stnum = len(self.results) - 1
             for i in range(len(decl.t_args)):
                 if i<6: self.results.append(MOV(reg[i], self.get(decl.t_args[i], decl.name)))
                 else: self.stack[decl.name][decl.t_args[i]] = str(16 + 8*(i - 6)) + "(%rbp)"
-            for expr in decl.body: self._process(expr, decl.name)
+            for expr in decl.body: self.results += self._process(expr, decl.name)
             self.results[self.stnum] = SUB(8*len(self.stack[decl.name]), "%rsp")
-            self.results.append(MOV("%rbp", "%rsp"))
-            self.results.append(POP("%rbp"))
-            self.results.append(MOV(0, "%rax"))
-            self.results.append(RET)
+            self.results += footer
 
     def _process(self, tin, proc):
-        if tin.opcode == 'const':
-            self.results.append(MOV(tin.arg1, self.get(tin.dest, proc)))
+        body = []
+        if tin.opcode == 'nop':
+            body.append(NOP)
+
+        elif tin.opcode == 'const':
+            body.append(MOV(tin.arg1, self.get(tin.dest, proc)))
 
         elif tin.opcode == 'copy':
-            self.results.append(MOV(self.get(tin.arg1, proc), "%rax"))
-            self.results.append(MOV("%rax", self.get(tin.dest, proc)))
+            body.append(MOV(self.get(tin.arg1, proc), "%rax"))
+            body.append(MOV("%rax", self.get(tin.dest, proc)))
 
         elif tin.opcode in simple_binop:
-            self.results.append(MOV(self.get(tin.arg1, proc),"%rax" ))
-            self.results.append(simple_binop[tin.opcode](self.get(tin.arg2, proc),"%rax"))
-            self.results.append(MOV("%rax",self.get(tin.dest, proc)))
+            body.append(MOV(self.get(tin.arg1, proc),"%rax" ))
+            body.append(simple_binop[tin.opcode](self.get(tin.arg2, proc),"%rax"))
+            body.append(MOV("%rax",self.get(tin.dest, proc)))
 
         elif tin.opcode in simple_unop:
-            self.results.append(MOV(self.get(tin.arg1, proc), "%rax" ))
-            self.results.append(simple_unop[tin.opcode]("%rax"))
-            self.results.append(MOV("%rax", self.get(tin.dest, proc)))
+            body.append(MOV(self.get(tin.arg1, proc), "%rax" ))
+            body.append(simple_unop[tin.opcode]("%rax"))
+            body.append(MOV("%rax", self.get(tin.dest, proc)))
 
         elif tin.opcode == 'shl' or tin.opcode == 'shr':
-            self.results.append(MOV(self.get(tin.arg2, proc), "%rcx" ))
-            self.results.append(MOV(self.get(tin.arg1, proc), "%rax" ))
-            self.results.append((SAL if tin.opcode == 'shl' else SAR)('%rcl', '%rax'))
-            self.results.append(MOV("%rax",self.get(tin.dest, proc)))
+            body.append(MOV(self.get(tin.arg2, proc), "%rcx" ))
+            body.append(MOV(self.get(tin.arg1, proc), "%rax" ))
+            body.append((SAL if tin.opcode == 'shl' else SAR)('%rcl', '%rax'))
+            body.append(MOV("%rax",self.get(tin.dest, proc)))
   
         elif tin.opcode == 'div' or tin.opcode == 'mod':
-            self.results.append(MOV(self.get(tin.arg1, proc),'%rax'))
-            self.results.append(IDIV(self.get(tin.arg2, proc)))
-            self.results.append(MOV('%rax' if tin.opcode == 'div' else '%rdx', self.get(tin.dest, proc)))
+            body.append(MOV(self.get(tin.arg1, proc),'%rax'))
+            body.append(IDIV(self.get(tin.arg2, proc)))
+            body.append(MOV('%rax' if tin.opcode == 'div' else '%rdx', self.get(tin.dest, proc)))
 
         elif tin.opcode == 'jmp':
-            self.results.append(JMP(tin.arg1))
+            body.append(JMP(tin.arg1))
 
         elif tin.opcode in jcc_map:
-            self.results.append(CMP(0, self.get(tin.arg1, proc)))
-            self.results.append(jcc_map[tin.opcode](tin.arg2))
+            body.append(CMP(0, self.get(tin.arg1, proc)))
+            body.append(jcc_map[tin.opcode](tin.arg2))
 
         elif tin.opcode == 'label':
-            self.results.append(LABEL(tin.arg1))
+            body.append(LABEL(tin.arg1))
 
         elif tin.opcode == 'param':
             self.paramnum += 1
-            self.results.append(MOV(self.get(tin.arg2, proc), '%rax'))
-            self.results.append(MOV('%rax', self.get("param" + str(tin.arg1), proc)))
+            body.append(MOV(self.get(tin.arg2, proc), '%rax'))
+            body.append(MOV('%rax', self.get("param" + str(tin.arg1), proc)))
 
         elif tin.opcode == 'call':
             reg = ['%rdi','%rsi','%rdx','%rcx','%r8','%r9']
             for i in range(self.paramnum):
-                if i<6: self.results.append(MOV(self.get("param"+str(i+1), proc), reg[i]))
-                else: self.results.append(PUSH(self.get("param" + str(i+1), proc), None))               
+                if i<6: body.append(MOV(self.get("param"+str(i+1), proc), reg[i]))
+                else: body.append(PUSH(self.get("param" + str(i+1), proc), None))               
             self.paramnum = 0
-            self.results.append(CALL(tin.arg1[1:]))
-            
+            body.append(CALL(tin.arg1[1:]))
+
+        else:
+            raise RuntimeError(f'Isel: cannot handle TAC opcode {tin.opcode}')
+
+        return body
 
 def generate(tac_file, gcc=True):
     tac_prog = tac.load_tac(tac_file)
     x64_prog = Isel()
-    print(tac_prog)
+    # print(tac_prog)
     x64_prog.proc(tac_prog)
     # print(x64_prog.results)
     x64_file = tac_file[:-3] + 's'

@@ -22,5 +22,5 @@ main:
 	callq print
 	movq %rbp, %rsp
 	popq %rbp
-	movq $0x0, %rax
+	xorq %rax, %rax
 	retq
