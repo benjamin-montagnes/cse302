@@ -26,7 +26,7 @@ class Isel:
 
     def get(self, temp, proc):
         if temp not in self.stack[proc]:
-            self.stack[proc][temp] = -1*len(self.stack[proc]) + 1
+            self.stack[proc][temp] = -8*(len(self.stack[proc]) + 1)
         return (self.stack[proc][temp],'%rbp')
 
     def proc(self, prog):
@@ -109,7 +109,7 @@ def generate(tac_file, gcc=True):
     x64_prog = Isel()
     print(tac_prog)
     x64_prog.proc(tac_prog)
-    print(x64_prog.results)
+    # print(x64_prog.results)
     x64_file = tac_file[:-3] + 's'
     out_files = []
     with open(x64_file, "w") as f:

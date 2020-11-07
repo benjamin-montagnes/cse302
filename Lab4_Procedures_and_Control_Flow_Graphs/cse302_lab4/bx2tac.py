@@ -157,8 +157,8 @@ class Munch:
             self._emit(Instr(dest, "call", f'@{expr.name}', len(expr.args)), proc)
         elif isinstance(expr, ast.Boolean):
              #print('ast.boolean---------')
-             if expr.value : self.emit(proc, Instr(dest, 'const', 1, None))
-             else: self.emit(proc, Instr(dest, 'const', 0, None))
+             if expr.value : self._emit(Instr(dest, 'const', 1, None),proc)
+             else: self._emit(Instr(dest, 'const', 0, None),proc)
         
         elif isinstance(expr, ast.Number):
             #print('ast.number---------')
@@ -278,7 +278,7 @@ Where OPTIONS is one of
         if not bx_file.endswith('.bx'):
             print(f'File name {bx_file} does not end in ".bx"')
             exit(1)
-        bx2_parser.lexer.load_source(bx_file)
+        bx2_parser.load_source(bx_file)
         prog = bx2_parser.parser.parse(lexer=bx2_parser.lexer)
         print(prog)
         #type check
