@@ -235,7 +235,7 @@ class Appl(Expr):
         self._ty = func_ty.result
     
     
-class Call(Expr): #pretty similar as call
+class Call(Expr): #pretty similar as Appl
     def __init__(self, name, *args): 
         self.name= name
         self.args = args
