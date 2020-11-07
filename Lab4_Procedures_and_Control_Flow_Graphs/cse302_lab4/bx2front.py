@@ -5,8 +5,8 @@ Main binary for BX2
 """
 
 import sys
-# from context import context
 from bx2_parser import load_source, lexer, parser
+#from ast import context
 
 if __name__ == '__main__':
     if len(sys.argv[1:])>1: raise RuntimeError('Only one document')
