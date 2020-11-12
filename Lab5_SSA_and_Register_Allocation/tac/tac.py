@@ -66,7 +66,7 @@ class Instr:
 
     @classmethod
     def _isphiargs(cls, thing):
-        return (isinstance(thing, tuple) and \
+        return (isinstance(thing, dict) and \
                 all(cls._isvar(x[1]) for x in thing))
 
     @classmethod
