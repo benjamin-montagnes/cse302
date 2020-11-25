@@ -100,6 +100,9 @@ class CFG:
     def in_degree(self, lab):
         return len(self._bwd[lab])
 
+    def nodes(self):
+        return iter(self._blockmap.values())
+
     def edges(self):
         """
         Returns an iterator over all the edges.
@@ -137,16 +140,24 @@ class CFG:
         for bl in self._blockmap.values():
             yield from bl.instrs()
 
-    def instr_pairs(self):
-        """The order of visiting the sequences is unspecified."""
+    def instr_pairs(self, labeled=False):
+        """
+        The order of visiting the sequences is unspecified. If `labeled' is
+        True, then yield a 4-tuple of the form (l1, i1, l2, i2) where
+        l1 and l2 are the labels of the blocks containing i1 and i2.
+        """
         # iterate over the edges
         for lab_from, lab_to in self.edges():
             i1 = self._blockmap[lab_from].last_instr()
             i2 = self._blockmap[lab_to].first_instr()
-            yield (i1, i2)
+            if labeled: yield (lab_from, i1, lab_to, i2)
+            else: yield (i1, i2)
         # iterate over the instruction pairs inside a block
         for bl in self._blockmap.values():
-            yield from bl.instr_pairs()
+            if labeled:
+                for i1, i2 in bl.instr_pairs():
+                    yield (bl.label, i1, bl.label, i2)
+            else: yield from bl.instr_pairs()
 
     def write_dot(self, tacfile):
         dotfile = f'{tacfile}.{self.proc_name[1:]}.dot'
@@ -174,7 +185,7 @@ def apply_label_rewrite(jinstr, tab):
     if jinstr.opcode == 'jmp':
         jinstr.arg1 = tab.get(jinstr.arg1, jinstr.arg1)
     elif jinstr.opcode == 'phi':
-        jinstr.arg1 = tuple((tab.get(lab, lab), tmp) for (lab, tmp) in jinstr.arg1)
+        jinstr.arg1 = tuple((tab.get(lab, lab), tmp) for (lab, tmp) in jinstr.arg1.items())
     elif jinstr.opcode != 'ret':
         jinstr.arg2 = tab.get(jinstr.arg2, jinstr.arg2)
 
@@ -314,7 +325,48 @@ def linearize(tac_proc, cfg):
 
 # ------------------------------------------------------------------------------
 
-if __name__ == '__main__':
+def filter_liveset(lab, lset):
+    for x in lset:
+        if isinstance(x, tuple):
+            if x[0] == lab: yield x[1]
+        else: yield x
+
+def recompute_liveness(cfg, livein, liveout):
+    """Perform liveness analysis on the given cfg, storing the results in `livein' and `liveout'.
+    Note: both `livein' and `liveout' are cleaned out before computing liveness."""
+    livein.clear()
+    liveout.clear()
+    # initialize livein with the use sets
+    for i in cfg.instrs():
+        livein[i] = set(i.uses())
+        liveout[i] = set()
+    dirty = True
+    def update_livein(i, j_livein):
+        nonlocal dirty
+        old_count = len(livein[i])
+        old_set = str(livein[i])
+        i_defs = set(i.defs())
+        for x in j_livein:
+            if ((isinstance(x, tuple) and x[1] in i_defs) or \
+                x in i_defs): continue
+            livein[i].add(x)
+        if old_count != len(livein[i]):
+            dirty = True
+    while dirty:
+        dirty = False
+        for (li, i, lj, j) in cfg.instr_pairs(labeled=True):
+            if li == lj: update_livein(i, livein[j])
+            else: update_livein(i, filter_liveset(li, livein[j]))
+    for li, i, lj, j in cfg.instr_pairs(labeled=True):
+        liveout[i].update(filter_liveset(li, livein[j]))
+    # fix the livein sets to remove tuples
+    for i, li in livein.items():
+        livein[i] = {x[1] if isinstance(x, tuple) else x \
+                     for x in li}
+
+# ------------------------------------------------------------------------------
+
+def main_cfg(tacf):
     import logging
     import os
     from argparse import ArgumentParser
@@ -325,7 +377,8 @@ if __name__ == '__main__':
                     help='increase verbosity')
     args = ap.parse_args()
     gvars, procs = dict(), dict()
-    for tlv in tac.load_tac(args.file[0]):
+    cfgs = []
+    for tlv in tac.load_tac(tacf):
         if isinstance(tlv, tac.Proc):
             logging.info(f'Processing {tlv.name}')
             cfg = infer(tlv)
@@ -335,3 +388,5 @@ if __name__ == '__main__':
             # os.system(f'dot -Tpdf -O {args.file[0]}.{tlv.name[1:]}.dot')
             linearize(tlv, cfg)
             logging.info(f'Finished processing {tlv.name}\n{tlv}')
+            cfgs.append(cfg)
+    return cfgs
