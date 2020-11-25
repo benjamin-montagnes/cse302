@@ -88,7 +88,7 @@ class Interference_Graph:
             col[v] = c
         return col
     
-    def tmp_spill(self, color_map): #to change
+    def tmp_spill(self, color_map):
         """ 1.pick a temporary and assign it ato a stack slot 
             2.Remove that temporary form the interference graph
             3.Recompute the SEO with max cardinality search and retry coloring
